@@ -1,0 +1,17 @@
+vault_zip_path: /tmp/vault.zip
+vault_bin_path: "/usr/local/bin"
+vault_bin: "/usr/local/bin/vault"
+vault_conf: "/etc/vault.d/vault.hcl"
+vault_log: "/var/log/vault/vault.log"
+tls_disable: 0
+service_name: "vault"
+vault_port: 8200
+vault_cluster_port: 8201
+vault_user: "vault"
+vault_uid: "8201"
+vault_group: "vault"
+vault_gid: "8201"
+vault_service: "vault"
+vault_raft_path: "/opt/vault/"
+vault_profile: "/etc/profile.d/vault.sh"
+vault_path: "/etc/vault.d/"

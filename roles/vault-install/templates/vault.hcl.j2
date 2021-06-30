@@ -1,0 +1,24 @@
+listener "tcp" {
+  address          = "0.0.0.0:{{ vault_port }}"
+  cluster_address  = "0.0.0.0:{{ vault_cluster_port }}"
+}
+
+api_addr = "https://{{ ansible_fqdn }}:{{ vault_port }}"
+cluster_addr = "https://{{ ansible_fqdn }}:{{ vault_cluster_port }}"
+
+seal "awskms" {
+  region     = "{{ vault_region }}"
+  kms_key_id = "{{ kms_key }}"
+}
+disable_mlock = true
+storage "raft" {
+  path = "{{ vault_raft_path }}"
+  node_id = "raft_{{ ansible_facts['nodename'] }}"
+
+  retry_join {
+  {% if cloud_env == "aws" -%}
+    auto_join = "provider=aws tag_key={{ vault_join_tag_key }} tag_value={{ vault_join_tag_value }} region={{ vault_region }} addr_type=private_v4"
+    auto_join_scheme = "http"
+  {% endif -%}
+  }
+ui = true

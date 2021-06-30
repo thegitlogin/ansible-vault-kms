@@ -1,0 +1,9 @@
+- hosts: localhost
+  become: yes
+
+  roles:
+    - name: Install Vault
+      role: ansible-role-vault-install
+
+    - name: Init Vault
+      role: ansible-role-vault-init

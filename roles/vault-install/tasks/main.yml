@@ -1,0 +1,114 @@
+---
+- name: Setup autocompletion
+  copy:
+    content: complete -C "{{ vault_bin }}" "vault"
+    dest: "/etc/profile.d/99-vault-completion.sh"
+    mode: 0644
+
+- name: Download vault from s3 bucket
+  s3:
+    bucket: "{{ s3_bucket }}"
+    object: "installers/vault_{{ vault_version }}_linux_amd64.zip"
+    dest: "{{ vault_zip_path }}"
+    mode: get
+    overwrite: no
+
+- name: Extract vault
+  ansible.builtin.unarchive:
+    src: "{{ vault_zip_path }}"
+    dest: "{{ vault_bin_path }}"
+
+- name: Create group vault
+  group:
+    name: "{{ vault_group }}"
+    gid: "{{ vault_gid }}"
+    state: present
+
+- name: Create user vault
+  user:
+    name: "{{ vault_user }}"
+    group: "{{ vault_group }}"
+    uid: "{{ vault_gid }}"
+    shell: /sbin/nologin
+
+- name: Create content & directory
+  file:
+    state: directory
+    path: "{{ item }}"
+    owner: "{{ vault_user }}"
+    group: "{{ vault_group }}"
+    mode: 0644
+  with_items:
+    - "{{ vault_raft_path }}"
+    - "{{ vault_path }}"
+    - "{{ vault_tls_path }}"
+
+- name: Create conf
+  file:
+    state: touch
+    owner: "{{ vault_user }}"
+    group: "{{ vault_group }}"
+    path: "{{ vault_conf }}"
+
+#Todo test
+#- name: Simple PUT operation
+#  amazon.aws.aws_s3:
+#    bucket: "{{ s3_bucket }}"
+#    object: "{{ item }} "
+#    dest:  "{{ vault_certs }}"
+#    mode: get
+#  with_items:
+#    - "{{ vault_cert_s3_crt }}"
+#    - "{{ vault_cert_s3_key }}"
+
+- name: Create vault server configuration
+  template:
+    src: vault.hcl.j2
+    dest: "{{ vault_conf }}"
+    owner: "{{ vault_user }}"
+    group: "{{ vault_group }}"
+    mode: 0640
+
+- name: Create vault systemd service config
+  template:
+    src: vault.service.j2
+    dest: "/etc/systemd/system/{{ vault_service }}.service"
+    owner: root
+    group: root
+    mode: 0664
+    force: no
+
+- name: Start and enable vault systemd service
+  systemd:
+    name: "{{ vault_service }}"
+    daemon_reload: yes
+    state: started
+    enabled: yes
+
+- name: Set VAULT_ADDR listener in profile
+  template:
+    src: profile.sh.j2
+    dest: /etc/profile.d/vault.sh
+    owner: root
+    group: root
+    mode: 0755
+
+#Add to clean-up
+#  - name: Clean Up
+#    file:
+#      state: absent
+#      path: "{{ item }}"
+#    with_items:
+#      - "{{ vault_zip_path }}"
+
+- name: Start vault systemd service
+  systemd:
+    name: "vault.service"
+    state: started
+
+
+- aws_kms_facts:
+  args:
+    alias: "alias/ec2kms"
+    filters:
+      "tag:Name": ec2kms
